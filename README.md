@@ -188,7 +188,9 @@ compare_retrieval(user_id="default_user", query="What is the user's name?", k=3)
 
 ## 📌 Status
 
-Actively developed. Current focus: migrating the backend to an async **FastAPI** service to support concurrent access and decouple the API layer from the Streamlit frontend.
+Actively developed. 
+
+**Current focus:** migrating the backend to an async **FastAPI** service to support concurrent access and decouple the API layer from the Streamlit frontend.
 
 ---
 

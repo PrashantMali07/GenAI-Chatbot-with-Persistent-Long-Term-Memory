@@ -9,6 +9,7 @@ from app.backend.checkpointer import (
     get_all_user_ids,
     init_thread_owners_table,
 )
+from langchain_core.messages import HumanMessage, AIMessage
 
 DEFAULT_USER_ID = "default_user"
 
@@ -51,9 +52,13 @@ def load_conversation(thread_id: str) -> list[dict]:
 
     formatted = []
     for message in raw_messages:
-        role = "user" if isinstance(message, HumanMessage) else "assistant"
-        if message.content:
-            formatted.append({"role": role, "content": message.content})
+        if isinstance(message, HumanMessage) and message.content:
+            formatted.append({"role": "user", "content": message.content})
+        elif isinstance(message, AIMessage) and message.content:
+            # Skipped AIMessages that only contain tool_calls with no actual text content
+            formatted.append({"role": "assistant", "content": message.content})
+        # ToolMessage, SystemMessage, and empty AIMessages (tool-call-only) are intentionally excluded
+
     return formatted
 
 
