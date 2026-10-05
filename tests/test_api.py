@@ -6,7 +6,7 @@ The LangGraph chatbot and Postgres calls are mocked so no external services
 are required.
 """
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, AsyncMock, patch
 
 from fastapi.testclient import TestClient
 
@@ -29,8 +29,9 @@ def test_health():
 # Users
 # ---------------------------------------------------------------------------
 
-@patch("app.api.users.get_all_user_ids", return_value=["alice", "bob"])
+@patch("app.api.users.get_all_user_ids", new_callable=AsyncMock, return_value=["alice", "bob"])
 def test_list_users(mock_fn):
+    # With FastAPI TestClient, async routes are run in an event loop.
     resp = client.get("/api/users")
     assert resp.status_code == 200
     assert set(resp.json()["users"]) == {"alice", "bob"}
@@ -40,11 +41,11 @@ def test_list_users(mock_fn):
 # Threads
 # ---------------------------------------------------------------------------
 
-@patch("app.api.sessions.retrieve_thread_ids", return_value=["t1", "t2"])
-@patch("app.api.sessions.chatbot")
+@patch("app.api.sessions.retrieve_thread_ids", new_callable=AsyncMock, return_value=["t1", "t2"])
+@patch("app.api.sessions.graph.chatbot")
 def test_list_threads(mock_chatbot, mock_retrieve):
-    # Mock get_state to return an empty snapshot
-    mock_chatbot.get_state.return_value = MagicMock(values={"messages": []})
+    # Mock aget_state to return an empty snapshot
+    mock_chatbot.aget_state = AsyncMock(return_value=MagicMock(values={"messages": []}))
     resp = client.get("/api/users/alice/threads")
     assert resp.status_code == 200
     data = resp.json()
@@ -52,32 +53,32 @@ def test_list_threads(mock_chatbot, mock_retrieve):
     assert len(data["threads"]) == 2
 
 
-@patch("app.api.sessions.register_thread_owner")
+@patch("app.api.sessions.register_thread_owner", new_callable=AsyncMock)
 def test_create_thread(mock_register):
     resp = client.post("/api/users/alice/threads")
     assert resp.status_code == 201
     data = resp.json()
     assert "thread_id" in data
     assert data["label"] == "New chat"
-    mock_register.assert_called_once()
+    mock_register.assert_awaited_once()
 
 
-@patch("app.api.sessions.delete_thread")
+@patch("app.api.sessions.delete_thread", new_callable=AsyncMock)
 def test_delete_thread(mock_delete):
     resp = client.delete("/api/threads/t1")
     assert resp.status_code == 204
-    mock_delete.assert_called_once_with("t1")
+    mock_delete.assert_awaited_once_with("t1")
 
 
-@patch("app.api.sessions.chatbot")
+@patch("app.api.sessions.graph.chatbot")
 def test_thread_history(mock_chatbot):
     from langchain_core.messages import AIMessage, HumanMessage
-    mock_chatbot.get_state.return_value = MagicMock(
+    mock_chatbot.aget_state = AsyncMock(return_value=MagicMock(
         values={"messages": [
             HumanMessage(content="Hello"),
             AIMessage(content="Hi there!"),
         ]}
-    )
+    ))
     resp = client.get("/api/threads/t1/history")
     assert resp.status_code == 200
     messages = resp.json()["messages"]
@@ -89,7 +90,7 @@ def test_thread_history(mock_chatbot):
 # Memory
 # ---------------------------------------------------------------------------
 
-@patch("app.api.memory.summarize_and_store", return_value="Alice is a developer.")
+@patch("app.api.memory.summarize_and_store", new_callable=AsyncMock, return_value="Alice is a developer.")
 def test_summarize(mock_fn):
     resp = client.post("/api/memory/summarize", json={"user_id": "alice", "thread_id": "t1"})
     assert resp.status_code == 200
@@ -98,7 +99,7 @@ def test_summarize(mock_fn):
     assert data["user_id"] == "alice"
 
 
-@patch("app.api.memory.compare_retrieval", return_value={
+@patch("app.api.memory.compare_retrieval", new_callable=AsyncMock, return_value={
     "user_id": "alice",
     "query": "name",
     "raw": {"strategy": "recency", "results": ["Alice is a developer."], "elapsed_seconds": 0.001},

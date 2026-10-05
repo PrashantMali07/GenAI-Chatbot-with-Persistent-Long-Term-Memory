@@ -1,22 +1,21 @@
 from typing import Annotated, TypedDict
 
+import aiosqlite
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
 from langgraph.graph import START, StateGraph
 from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode, tools_condition
+from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 
-from app.backend.checkpointer import get_checkpointer
 from app.backend.llm.provider import fallback_llm
 from app.tools import all_tools
+from app.config import SQLITE_DB_PATH
 
 ## Binding Tools
 llm_with_tools = fallback_llm.bind_tools(all_tools)
 
 ## Tool node
 tool_node = ToolNode(all_tools)
-
-## STM Check Pointer
-check_pointer = get_checkpointer()
 
 ## -----------------> Define the graph node and state
 class ChatState(TypedDict):
@@ -45,14 +44,14 @@ user provides a specific URL to read.
 
 Do not use tools for general knowledge questions unrelated to the user's history.""")
 
-def chat_node(state: ChatState) -> ChatState:
+async def chat_node(state: ChatState) -> ChatState:
     messages = state['messages']
 
     # Prepend system prompt if not already present
     if not messages or not isinstance(messages[0], SystemMessage):
         messages = [SYSTEM_PROMPT] + messages
 
-    response = llm_with_tools.invoke(messages)
+    response = await llm_with_tools.ainvoke(messages)
 
     return {'messages': [response]}
 
@@ -66,25 +65,20 @@ graph.add_edge(START, 'chat_node')
 graph.add_conditional_edges('chat_node', tools_condition) 
 graph.add_edge('tools', 'chat_node')
 
-chatbot = graph.compile(checkpointer=check_pointer)
+# Global references
+chatbot = None
+_sqlite_conn = None
 
-## Debug code
-if __name__ == "__main__":
-    CONFIG = {'configurable': {'thread_id': 'chat_3', 'user_id': 'default_user'}}
-    print("\n--- To exit, type 'exit', 'quit', or 'bye' ---")
-    while True:
-        user_input = input("\nPlease type here: ")
-        print("User message:", user_input)
+async def init_chatbot():
+    """Initializes the async checkpointer and compiles the graph."""
+    global chatbot, _sqlite_conn
+    _sqlite_conn = await aiosqlite.connect(SQLITE_DB_PATH, check_same_thread=False)
+    checkpointer = AsyncSqliteSaver(_sqlite_conn)
+    chatbot = graph.compile(checkpointer=checkpointer)
 
-        if user_input.strip().lower() in ['exit', 'quit', 'bye', 'thanks']:
-            print("Goodbye!")
-            break
-        
-        print("Assistant: ", end="", flush=True)
-        for msg_chunk, metadata in chatbot.stream(
-            {"messages": [HumanMessage(content=user_input)]},
-            config=CONFIG,
-            stream_mode="messages"  # streams LLM tokens
-        ):
-            if isinstance(msg_chunk, AIMessage) and msg_chunk.content:
-                print(msg_chunk.content, end="", flush=True)
+async def close_chatbot():
+    """Closes the async checkpointer connection."""
+    global _sqlite_conn
+    if _sqlite_conn:
+        await _sqlite_conn.close()
+        _sqlite_conn = None

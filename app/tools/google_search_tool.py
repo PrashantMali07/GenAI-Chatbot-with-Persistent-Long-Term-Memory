@@ -8,13 +8,13 @@ _client = genai.Client(api_key=GOOGLE_API_KEY)
 
 
 @tool
-def google_search(query: str) -> str:
+async def google_search(query: str) -> str:
     """
     Search Google for current, real-world information — news, facts, prices,
     events, or anything that may have changed recently or isn't covered by
     other tools. Use this for general web search queries.
     """
-    response = _client.models.generate_content(
+    response = await _client.aio.models.generate_content(
         model="gemini-2.5-flash",
         contents=query,
         config=types.GenerateContentConfig(

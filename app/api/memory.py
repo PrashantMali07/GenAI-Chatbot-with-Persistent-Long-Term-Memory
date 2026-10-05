@@ -20,14 +20,14 @@ router = APIRouter(prefix="/api/memory", tags=["memory"])
 
 
 @router.post("/summarize", response_model=SummarizeResponse)
-def summarize(req: SummarizeRequest) -> SummarizeResponse:
+async def summarize(req: SummarizeRequest) -> SummarizeResponse:
     """Incrementally summarize a thread's messages and store them in Postgres.
 
     Only messages since the last save are processed, so repeated calls
     are cheap — they don't reprocess the entire conversation history.
     """
     try:
-        summary = summarize_and_store(user_id=req.user_id, thread_id=req.thread_id)
+        summary = await summarize_and_store(user_id=req.user_id, thread_id=req.thread_id)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
@@ -35,14 +35,14 @@ def summarize(req: SummarizeRequest) -> SummarizeResponse:
 
 
 @router.post("/compare", response_model=CompareMemoryResponse)
-def compare(req: CompareMemoryRequest) -> CompareMemoryResponse:
+async def compare(req: CompareMemoryRequest) -> CompareMemoryResponse:
     """Run both long-term retrieval strategies and return results side-by-side.
 
     Useful for evaluating raw (recency-based) vs. vector (semantic) recall
     quality for a given user and query.
     """
     try:
-        result = compare_retrieval(user_id=req.user_id, query=req.query, k=req.k)
+        result = await compare_retrieval(user_id=req.user_id, query=req.query, k=req.k)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 

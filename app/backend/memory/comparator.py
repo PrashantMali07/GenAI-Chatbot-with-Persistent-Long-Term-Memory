@@ -1,4 +1,5 @@
 import time
+import asyncio
 
 from langsmith import traceable
 
@@ -7,7 +8,7 @@ from app.backend.memory.postgres_vector import PostgresVectorStore
 
 
 @traceable(name="compare_retrieval")
-def compare_retrieval(user_id: str, query: str, k: int = 5) -> dict:
+async def compare_retrieval(user_id: str, query: str, k: int = 5) -> dict:
     """
     Runs both long-term memory retrieval strategies for the same query
     and returns their results side-by-side, along with basic timing,
@@ -19,13 +20,23 @@ def compare_retrieval(user_id: str, query: str, k: int = 5) -> dict:
     raw_store = PostgresRawStore()
     vector_store = PostgresVectorStore()
 
-    start_raw = time.perf_counter()
-    raw_results = raw_store.retrieve(user_id=user_id, query=query, k=k)
-    raw_elapsed = time.perf_counter() - start_raw
+    # We can measure execution times by wrapping the calls
+    async def fetch_raw():
+        t0 = time.perf_counter()
+        res = await raw_store.retrieve(user_id=user_id, query=query, k=k)
+        t1 = time.perf_counter()
+        return res, t1 - t0
 
-    start_vector = time.perf_counter()
-    vector_results = vector_store.retrieve(user_id=user_id, query=query, k=k)
-    vector_elapsed = time.perf_counter() - start_vector
+    async def fetch_vector():
+        t0 = time.perf_counter()
+        res = await vector_store.retrieve(user_id=user_id, query=query, k=k)
+        t1 = time.perf_counter()
+        return res, t1 - t0
+
+    # Run them concurrently
+    (raw_results, raw_elapsed), (vector_results, vector_elapsed) = await asyncio.gather(
+        fetch_raw(), fetch_vector()
+    )
 
     comparison = {
         "user_id": user_id,

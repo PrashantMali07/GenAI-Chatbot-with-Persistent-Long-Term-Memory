@@ -1,10 +1,12 @@
-import requests
+import httpx
 from bs4 import BeautifulSoup
 from langchain_core.tools import tool
+from tenacity import retry, wait_exponential, stop_after_attempt
 
 
 @tool
-def get_url_content(url: str) -> str:
+@retry(wait=wait_exponential(multiplier=1, min=2, max=10), stop=stop_after_attempt(3), reraise=True)
+async def get_url_content(url: str) -> str:
     """
     CRITICAL: Use this tool ONLY when the user provides an exact website URL link 
     (starting with http:// or https://) and asks to extract information directly from it.
@@ -16,10 +18,11 @@ def get_url_content(url: str) -> str:
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     }
     try:
-        response = requests.get(url, headers=headers, timeout=10)
-        if response.status_code != 200:
-            return f"Error: Webpage returned status code {response.status_code}"
-            
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url, headers=headers, timeout=10.0)
+            if response.status_code != 200:
+                return f"Error: Webpage returned status code {response.status_code}"
+                
         soup = BeautifulSoup(response.text, "html.parser")
         
         # --- FIXING THE HTML SNIPPET ISSUE ---

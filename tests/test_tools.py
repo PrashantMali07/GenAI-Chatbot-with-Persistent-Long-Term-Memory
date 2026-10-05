@@ -5,9 +5,10 @@ These tests do NOT require a running backend or database — they
 exercise the tool logic with mocked external calls.
 """
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, AsyncMock, patch
 
 import pytest
+import httpx
 
 from app.tools.calculator_tool import calculator
 from app.tools.stock_tool import get_stock_price
@@ -54,49 +55,55 @@ MOCK_STOCK_RESPONSE = {
 }
 
 
-@patch("app.tools.stock_tool.requests.get")
-def test_get_stock_price_success(mock_get):
+@pytest.mark.asyncio
+@patch("httpx.AsyncClient.get", new_callable=AsyncMock)
+async def test_get_stock_price_success(mock_get):
     mock_resp = MagicMock()
     mock_resp.json.return_value = MOCK_STOCK_RESPONSE
+    mock_resp.raise_for_status = MagicMock()
     mock_get.return_value = mock_resp
 
-    result = get_stock_price.invoke({"symbol": "AAPL"})
+    result = await get_stock_price.ainvoke({"symbol": "AAPL"})
     assert result["symbol"] == "AAPL"
     assert result["today_price"] == "175.00"
     assert result["change"] == "5.00"
 
 
-@patch("app.tools.stock_tool.requests.get")
-def test_get_stock_price_bad_symbol(mock_get):
+@pytest.mark.asyncio
+@patch("httpx.AsyncClient.get", new_callable=AsyncMock)
+async def test_get_stock_price_bad_symbol(mock_get):
     mock_resp = MagicMock()
     mock_resp.json.return_value = {"Note": "API limit reached"}
+    mock_resp.raise_for_status = MagicMock()
     mock_get.return_value = mock_resp
 
     with pytest.raises(ValueError, match="Could not fetch stock price"):
-        get_stock_price.invoke({"symbol": "INVALID"})
+        await get_stock_price.ainvoke({"symbol": "INVALID"})
 
 
 # ---------------------------------------------------------------------------
-# URL tool — mock requests.get
+# URL tool — mock httpx
 # ---------------------------------------------------------------------------
 
 
-@patch("app.tools.url_tool.requests.get")
-def test_get_url_content_success(mock_get):
+@pytest.mark.asyncio
+@patch("httpx.AsyncClient.get", new_callable=AsyncMock)
+async def test_get_url_content_success(mock_get):
     mock_resp = MagicMock()
     mock_resp.status_code = 200
     mock_resp.text = "<html><body><p>Hello World</p></body></html>"
     mock_get.return_value = mock_resp
 
-    result = get_url_content.invoke({"url": "https://example.com"})
+    result = await get_url_content.ainvoke({"url": "https://example.com"})
     assert "Hello World" in result
 
 
-@patch("app.tools.url_tool.requests.get")
-def test_get_url_content_http_error(mock_get):
+@pytest.mark.asyncio
+@patch("httpx.AsyncClient.get", new_callable=AsyncMock)
+async def test_get_url_content_http_error(mock_get):
     mock_resp = MagicMock()
     mock_resp.status_code = 404
     mock_get.return_value = mock_resp
 
-    result = get_url_content.invoke({"url": "https://example.com/notfound"})
+    result = await get_url_content.ainvoke({"url": "https://example.com/notfound"})
     assert "404" in result

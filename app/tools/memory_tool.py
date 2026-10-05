@@ -7,7 +7,7 @@ from app.backend.memory.postgres_vector import PostgresVectorStore
 
 
 @tool
-def recall_memory(
+async def recall_memory(
     query: str,
     config: Annotated[RunnableConfig, InjectedToolArg],
 ) -> str:
@@ -20,7 +20,7 @@ def recall_memory(
     user_id = config["configurable"].get("user_id", "default_user")
 
     store = PostgresVectorStore()
-    results = store.retrieve(user_id=user_id, query=query, k=3)
+    results = await store.retrieve(user_id=user_id, query=query, k=3)
 
     if not results:
         return "No relevant long-term memory found."

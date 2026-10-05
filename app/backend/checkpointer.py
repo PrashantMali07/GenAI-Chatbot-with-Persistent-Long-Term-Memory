@@ -1,68 +1,66 @@
-import sqlite3
+import aiosqlite
 
-from langgraph.checkpoint.sqlite import SqliteSaver
+from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 
-from app.config import SQLITE_DB_PATH
-
-
-def get_checkpointer():
-    conn = sqlite3.connect(SQLITE_DB_PATH, check_same_thread=False)
-    return SqliteSaver(conn)
+from app.backend.memory.db import get_sqlite_connection
 
 
-def _get_raw_connection():
-    return sqlite3.connect(SQLITE_DB_PATH, check_same_thread=False)
+async def get_checkpointer() -> AsyncSqliteSaver:
+    """Creates a new checkpointer connected to the SQLite DB."""
+    # Note: langgraph requires the underlying aiosqlite.Connection.
+    # We open a new connection for the checkpointer which langgraph manages.
+    conn = await aiosqlite.connect("app/db/short-term-memory/stm.db", check_same_thread=False)
+    return AsyncSqliteSaver(conn)
 
 
-def init_thread_owners_table():
+async def init_thread_owners_table():
     """Creates the thread ownership tracking table if it doesn't exist."""
-    conn = _get_raw_connection()
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS thread_owners (
-            thread_id TEXT PRIMARY KEY,
-            user_id TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    async with get_sqlite_connection() as conn:
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS thread_owners (
+                thread_id TEXT PRIMARY KEY,
+                user_id TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        await conn.commit()
+
+
+async def register_thread_owner(thread_id: str, user_id: str) -> None:
+    async with get_sqlite_connection() as conn:
+        await conn.execute(
+            "INSERT OR IGNORE INTO thread_owners (thread_id, user_id) VALUES (?, ?)",
+            (thread_id, user_id),
         )
-    """)
-    conn.commit()
-    conn.close()
+        await conn.commit()
 
 
-def register_thread_owner(thread_id: str, user_id: str) -> None:
-    conn = _get_raw_connection()
-    conn.execute(
-        "INSERT OR IGNORE INTO thread_owners (thread_id, user_id) VALUES (?, ?)",
-        (thread_id, user_id),
-    )
-    conn.commit()
-    conn.close()
-
-
-def retrieve_thread_ids(user_id: str) -> list[str]:
+async def retrieve_thread_ids(user_id: str) -> list[str]:
     """Returns thread_ids belonging to a specific user, ordered by most recent."""
-    conn = _get_raw_connection()
-    rows = conn.execute(
-        "SELECT thread_id FROM thread_owners WHERE user_id = ? ORDER BY created_at DESC",
-        (user_id,),
-    ).fetchall()
-    conn.close()
-    return [row[0] for row in rows]
+    async with get_sqlite_connection() as conn:
+        async with conn.execute(
+            "SELECT thread_id FROM thread_owners WHERE user_id = ? ORDER BY created_at DESC",
+            (user_id,),
+        ) as cursor:
+            rows = await cursor.fetchall()
+            return [row[0] for row in rows]
 
 
-def get_all_user_ids() -> list[str]:
+async def get_all_user_ids() -> list[str]:
     """Returns all distinct user_ids that have created at least one thread."""
-    conn = _get_raw_connection()
-    rows = conn.execute("SELECT DISTINCT user_id FROM thread_owners ORDER BY user_id").fetchall()
-    conn.close()
-    return [row[0] for row in rows]
+    async with get_sqlite_connection() as conn:
+        async with conn.execute("SELECT DISTINCT user_id FROM thread_owners ORDER BY user_id") as cursor:
+            rows = await cursor.fetchall()
+            return [row[0] for row in rows]
 
 
-def delete_thread(thread_id: str) -> None:
+async def delete_thread(thread_id: str) -> None:
     """Deletes short-term (session) checkpoint data + ownership record."""
-    checkpointer = get_checkpointer()
-    checkpointer.delete_thread(thread_id)
+    checkpointer = await get_checkpointer()
+    await checkpointer.adelete_thread(thread_id)
+    # The checkpointer's connection should be closed after we're done since it opened a new one.
+    await checkpointer.conn.close()
 
-    conn = _get_raw_connection()
-    conn.execute("DELETE FROM thread_owners WHERE thread_id = ?", (thread_id,))
-    conn.commit()
-    conn.close()
+    async with get_sqlite_connection() as conn:
+        await conn.execute("DELETE FROM thread_owners WHERE thread_id = ?", (thread_id,))
+        await conn.commit()

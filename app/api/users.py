@@ -13,6 +13,7 @@ router = APIRouter(prefix="/api/users", tags=["users"])
 
 
 @router.get("", response_model=UserListResponse)
-def list_users() -> UserListResponse:
+async def list_users() -> UserListResponse:
     """Return all user IDs that have at least one registered thread."""
-    return UserListResponse(users=get_all_user_ids())
+    users = await get_all_user_ids()
+    return UserListResponse(users=users)

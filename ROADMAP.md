@@ -44,16 +44,16 @@ git checkout -b v2-fastapi
 
 ---
 
-## v3 — Async Backend
+## v3 — Async Backend (Completed ✅)
 
 **Goal:** Make I/O-bound operations (LLM calls, DB queries, embeddings) run concurrently.
 
-- Convert FastAPI endpoints to `async def`
-- Swap `psycopg2` → `asyncpg` or `psycopg[async]`
-- Use LangGraph's async invocation/streaming APIs
-- Add retry/backoff logic around external API calls (OpenAI, Gemini, AlphaVantage)
-- Add basic rate limiting for public deployment safety
-- Streamlit frontend remains synchronous — it becomes a simple client calling the now-async API, rather than being rewritten itself
+- Convert FastAPI endpoints to `async def` ✅
+- Swap `psycopg2` → `asyncpg` or `psycopg[async]` (Used psycopg3 AsyncConnectionPool) ✅
+- Use LangGraph's async invocation/streaming APIs (`astream`, `ainvoke`, `AsyncSqliteSaver`) ✅
+- Add retry/backoff logic around external API calls (Added `tenacity` & `httpx` to tools) ✅
+- Add basic rate limiting for public deployment safety (Added `slowapi`) ✅
+- Streamlit frontend remains synchronous — it becomes a simple client calling the now-async API, rather than being rewritten itself ✅
 
 ---
 

@@ -8,12 +8,13 @@ the Streamlit thin client can pipe it straight into st.write_stream().
 
 import json
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
 from langchain_core.messages import AIMessage, HumanMessage
 
-from app.backend.graph import chatbot
+from app.backend import graph
 from app.schemas import ChatRequest, ChatResponse
+from app.rate_limiter import limiter
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 
@@ -32,10 +33,11 @@ def _langgraph_config(req: ChatRequest) -> dict:
 # ---------------------------------------------------------------------------
 
 @router.post("", response_model=ChatResponse)
-def chat(req: ChatRequest) -> ChatResponse:
+@limiter.limit("20/minute")
+async def chat(request: Request, req: ChatRequest) -> ChatResponse:
     """Send a message and receive a complete reply (buffered, no streaming)."""
     full_reply = ""
-    for chunk, _ in chatbot.stream(
+    async for chunk, _ in graph.chatbot.astream(
         {"messages": [HumanMessage(content=req.message)]},
         config=_langgraph_config(req),
         stream_mode="messages",
@@ -51,7 +53,8 @@ def chat(req: ChatRequest) -> ChatResponse:
 # ---------------------------------------------------------------------------
 
 @router.post("/stream")
-def chat_stream(req: ChatRequest) -> StreamingResponse:
+@limiter.limit("20/minute")
+async def chat_stream(request: Request, req: ChatRequest) -> StreamingResponse:
     """Send a message and receive the reply as a Server-Sent Events stream.
 
     Each event is a JSON object:  ``data: {"token": "...", "done": false}``
@@ -63,8 +66,8 @@ def chat_stream(req: ChatRequest) -> StreamingResponse:
             ...
     """
 
-    def _token_generator():
-        for chunk, _ in chatbot.stream(
+    async def _token_generator():
+        async for chunk, _ in graph.chatbot.astream(
             {"messages": [HumanMessage(content=req.message)]},
             config=_langgraph_config(req),
             stream_mode="messages",

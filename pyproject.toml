@@ -33,6 +33,7 @@ dependencies = [
     "pydantic-settings>=2.4.0",
     "python-dotenv>=1.0.1",
     "ddgs>=9.16.0",
+    "slowapi>=0.1.10",
 ]
 
 [dependency-groups]
