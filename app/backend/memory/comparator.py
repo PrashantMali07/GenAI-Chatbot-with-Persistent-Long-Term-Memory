@@ -1,8 +1,9 @@
 import time
-from app.backend.memory.postgres_raw import PostgresRawStore
-from app.backend.memory.postgres_vector import PostgresVectorStore
 
 from langsmith import traceable
+
+from app.backend.memory.postgres_raw import PostgresRawStore
+from app.backend.memory.postgres_vector import PostgresVectorStore
 
 
 @traceable(name="compare_retrieval")

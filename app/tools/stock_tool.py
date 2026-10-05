@@ -1,6 +1,6 @@
-import json
 import requests
-from langchain_community.tools import tool
+from langchain_core.tools import tool
+
 from app.config import ALPHAVANTAGE_API_KEY
 
 
@@ -10,7 +10,6 @@ def get_stock_price(symbol: str)->dict:
     fetch the latest stock price for a given symbol (e.g. 'AAPL', 'TSLA')
     using Alpha vantage using the URL with API key.
     """
-    import requests
     api_key = ALPHAVANTAGE_API_KEY
     url = f'https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol={symbol}&apikey={api_key}'
     response = requests.get(url)

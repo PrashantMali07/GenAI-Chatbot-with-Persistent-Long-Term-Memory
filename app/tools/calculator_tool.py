@@ -1,6 +1,8 @@
 import operator
 from typing import Literal
-from langchain_community.tools import tool
+
+from langchain_core.tools import tool
+
 
 @tool
 def calculator(num1: float, num2: float, operation: Literal['add', 'subtract', 'multiply', 'divide']) -> float:

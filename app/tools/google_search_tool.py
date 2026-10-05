@@ -1,6 +1,7 @@
-from langchain_core.tools import tool
 from google import genai
 from google.genai import types
+from langchain_core.tools import tool
+
 from app.config import GOOGLE_API_KEY
 
 _client = genai.Client(api_key=GOOGLE_API_KEY)

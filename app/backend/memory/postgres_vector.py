@@ -1,4 +1,5 @@
 from langchain_openai import OpenAIEmbeddings
+
 from app.backend.memory.base import BaseMemoryStore
 from app.backend.memory.db import get_connection
 from app.config import OPENAI_API_KEY, OPENAI_EMBEDDING_MODEL

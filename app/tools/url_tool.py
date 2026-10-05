@@ -1,6 +1,6 @@
 import requests
 from bs4 import BeautifulSoup
-from langchain_community.tools import tool
+from langchain_core.tools import tool
 
 
 @tool

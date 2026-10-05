@@ -15,5 +15,8 @@ __pycache__/
 app/db/short-term-memory/*.db-shm
 app/db/short-term-memory/*.db-wal
 
+# Docker
+.docker/
+
 # Streamlit agent skills (environment-specific symlinks)
 .agents/skills/developing-with-streamlit

@@ -1,15 +1,13 @@
-from langgraph.prebuilt import ToolNode, tools_condition
+from typing import Annotated, TypedDict
+
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
+from langgraph.graph import START, StateGraph
 from langgraph.graph.message import add_messages
+from langgraph.prebuilt import ToolNode, tools_condition
 
-from typing import TypedDict, Literal, Annotated
-from pydantic import BaseModel, Field
-
-from langgraph.graph import StateGraph, START, END
-from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage, AIMessage
-
-from app.tools import all_tools
-from app.backend.llm.provider import fallback_llm
 from app.backend.checkpointer import get_checkpointer
+from app.backend.llm.provider import fallback_llm
+from app.tools import all_tools
 
 ## Binding Tools
 llm_with_tools = fallback_llm.bind_tools(all_tools)

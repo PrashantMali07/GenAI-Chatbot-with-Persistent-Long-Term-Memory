@@ -1,8 +1,8 @@
-from app.backend.memory.base import BaseMemoryStore
-from app.backend.memory.db import get_connection
-from typing import List
 
 from langsmith import traceable
+
+from app.backend.memory.base import BaseMemoryStore
+from app.backend.memory.db import get_connection
 
 
 class PostgresRawStore(BaseMemoryStore):
@@ -23,7 +23,7 @@ class PostgresRawStore(BaseMemoryStore):
             conn.close()
 
     @traceable(name="raw_retrieve")
-    def retrieve(self, user_id: str, query: str, k: int = 5) -> List[str]:
+    def retrieve(self, user_id: str, query: str, k: int = 5) -> list[str]:
         conn = get_connection()
         try:
             with conn.cursor() as cur:

@@ -1,4 +1,5 @@
 import psycopg2
+
 from app.config import POSTGRES_URL
 
 

@@ -31,16 +31,16 @@ git checkout -b v2-fastapi
 
 ---
 
-## v2 — FastAPI + Pydantic + Docker + Tests
+## v2 — FastAPI + Pydantic + Docker + Tests ✅ Done
 
 **Goal:** Turn the backend into a real, validated API service; Streamlit becomes a thin client.
 
-- Introduce FastAPI as the backend service layer
-- Define Pydantic models for request/response validation at the API boundary (chat messages, user/thread identifiers, tool outputs)
-- Streamlit calls the API over HTTP instead of importing backend code directly
-- Add `Dockerfile` + `docker-compose.yml` (app + PostgreSQL)
-- Add a unit test suite (tools, memory stores, summarizer) using the existing `BaseMemoryStore` interface as a natural test seam
-- Add GitHub Actions CI to run tests on push
+- Introduce FastAPI as the backend service layer (`app/server.py` + `app/api/`) ✅
+- Define Pydantic models for request/response validation at the API boundary (`app/schemas.py`) ✅
+- Streamlit calls the API over HTTP instead of importing backend code directly (`app/frontend/client.py`) ✅
+- Add `Dockerfile` + `docker-compose.yml` (multi-stage uv build, app + PostgreSQL + pgvector) ✅
+- Add a unit test suite (tools, memory stores, API routes) using `BaseMemoryStore` interface seam (`tests/`) ✅
+- Add GitHub Actions CI to run linter (ruff) and tests (pytest) on push/PR (`.github/workflows/ci.yml`) ✅
 
 ---
 

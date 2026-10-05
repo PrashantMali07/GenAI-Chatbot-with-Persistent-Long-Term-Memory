@@ -1,6 +1,8 @@
 from typing import Annotated
-from langchain_core.tools import tool, InjectedToolArg
+
 from langchain_core.runnables import RunnableConfig
+from langchain_core.tools import InjectedToolArg, tool
+
 from app.backend.memory.postgres_vector import PostgresVectorStore
 
 
