@@ -1,3 +1,9 @@
+import os
+import sys
+
+# Add the project root to sys.path so 'app' can be imported
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+
 import streamlit as st
 
 from app.frontend.chat_ui import handle_user_input, render_messages
