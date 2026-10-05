@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import chat_router, memory_router, sessions_router, users_router
+from app.api import auth_router, chat_router, memory_router, sessions_router, users_router
 from app.backend.checkpointer import init_thread_owners_table
 from app.backend.memory.db import init_pg_pool, close_pg_pool
 from app.backend.graph import init_chatbot, close_chatbot
@@ -57,6 +57,7 @@ def create_app() -> FastAPI:
         return {"status": "ok"}
 
     # Routers
+    application.include_router(auth_router)
     application.include_router(chat_router)
     application.include_router(sessions_router)
     application.include_router(memory_router)

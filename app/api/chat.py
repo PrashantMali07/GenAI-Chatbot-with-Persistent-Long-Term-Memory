@@ -7,23 +7,23 @@ the Streamlit thin client can pipe it straight into st.write_stream().
 """
 
 import json
-
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, Depends
 from fastapi.responses import StreamingResponse
 from langchain_core.messages import AIMessage, HumanMessage
 
 from app.backend import graph
 from app.schemas import ChatRequest, ChatResponse
 from app.rate_limiter import limiter
+from app.auth import get_current_user
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 
 
-def _langgraph_config(req: ChatRequest) -> dict:
+def _langgraph_config(req: ChatRequest, user_id: str) -> dict:
     return {
         "configurable": {
             "thread_id": req.thread_id,
-            "user_id": req.user_id,
+            "user_id": user_id,
         }
     }
 
@@ -34,18 +34,18 @@ def _langgraph_config(req: ChatRequest) -> dict:
 
 @router.post("", response_model=ChatResponse)
 @limiter.limit("20/minute")
-async def chat(request: Request, req: ChatRequest) -> ChatResponse:
+async def chat(request: Request, req: ChatRequest, user_id: str = Depends(get_current_user)) -> ChatResponse:
     """Send a message and receive a complete reply (buffered, no streaming)."""
     full_reply = ""
     async for chunk, _ in graph.chatbot.astream(
         {"messages": [HumanMessage(content=req.message)]},
-        config=_langgraph_config(req),
+        config=_langgraph_config(req, user_id),
         stream_mode="messages",
     ):
         if isinstance(chunk, AIMessage) and chunk.content:
             full_reply += chunk.content
 
-    return ChatResponse(reply=full_reply, user_id=req.user_id, thread_id=req.thread_id)
+    return ChatResponse(reply=full_reply, user_id=user_id, thread_id=req.thread_id)
 
 
 # ---------------------------------------------------------------------------
@@ -54,22 +54,13 @@ async def chat(request: Request, req: ChatRequest) -> ChatResponse:
 
 @router.post("/stream")
 @limiter.limit("20/minute")
-async def chat_stream(request: Request, req: ChatRequest) -> StreamingResponse:
-    """Send a message and receive the reply as a Server-Sent Events stream.
-
-    Each event is a JSON object:  ``data: {"token": "...", "done": false}``
-    The final event has ``"done": true`` with an empty token.
-
-    The Streamlit client can consume this with:
-        response = requests.post(url, json=payload, stream=True)
-        for line in response.iter_lines():
-            ...
-    """
+async def chat_stream(request: Request, req: ChatRequest, user_id: str = Depends(get_current_user)) -> StreamingResponse:
+    """Send a message and receive the reply as a Server-Sent Events stream."""
 
     async def _token_generator():
         async for chunk, _ in graph.chatbot.astream(
             {"messages": [HumanMessage(content=req.message)]},
-            config=_langgraph_config(req),
+            config=_langgraph_config(req, user_id),
             stream_mode="messages",
         ):
             if isinstance(chunk, AIMessage) and chunk.content:

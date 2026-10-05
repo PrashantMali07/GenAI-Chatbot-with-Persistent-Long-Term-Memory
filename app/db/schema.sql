@@ -1,4 +1,16 @@
 CREATE EXTENSION IF NOT EXISTS vector;
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+-- Registered users table for JWT authentication
+CREATE TABLE IF NOT EXISTS users (
+    id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    username   TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+CREATE INDEX idx_users_username_trgm ON users USING gin (username gin_trgm_ops);
+
+
 
 -- Raw long-term memory (plain text, no embeddings)
 -- Scoped by user_id so memory persists across all threads for a given user.
@@ -11,6 +23,7 @@ CREATE TABLE long_term_memory_raw (
 );
 CREATE INDEX idx_ltm_raw_user_id ON long_term_memory_raw (user_id);
 CREATE INDEX idx_ltm_raw_thread_id ON long_term_memory_raw (thread_id);
+CREATE INDEX idx_ltm_raw_summary_trgm ON long_term_memory_raw USING gin (summary gin_trgm_ops);
 
 -- Vector long-term memory — OpenAI embeddings (text-embedding-3-small = 1536 dims)
 -- Scoped by user_id for cross-session semantic recall.

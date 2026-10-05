@@ -8,6 +8,7 @@ annotated-types==0.8.0
 anyio==4.15.1
 arxiv==4.0.1
 attrs==26.1.0
+bcrypt==5.0.0
 beautifulsoup4==4.15.0
 certifi==2026.7.22
 cffi==2.1.1
@@ -70,6 +71,7 @@ orjson==3.12.0
 ormsgpack==1.12.2
 packaging==26.3
 pandas==3.0.6
+passlib==1.7.4
 pgvector==0.5.0
 pillow==12.3.0
 pluggy==1.6.0
@@ -89,6 +91,7 @@ pydantic-core==2.46.5
 pydantic-settings==2.15.0
 pydeck==0.9.3
 pygments==2.21.0
+pyjwt==2.15.1
 pytest==9.1.1
 pytest-asyncio==1.4.0
 python-dateutil==2.9.0.post0

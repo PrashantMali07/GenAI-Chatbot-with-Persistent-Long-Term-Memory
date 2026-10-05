@@ -9,8 +9,10 @@ GET    /api/threads/{thread_id}/history       — load conversation history
 
 import uuid
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from langchain_core.messages import AIMessage, HumanMessage
+
+from app.auth import get_current_user
 
 from app.backend.checkpointer import (
     delete_thread,
@@ -63,8 +65,8 @@ async def _load_conversation(thread_id: str) -> list[dict]:
 # List threads
 # ---------------------------------------------------------------------------
 
-@router.get("/api/users/{user_id}/threads", response_model=ThreadListResponse)
-async def list_threads(user_id: str) -> ThreadListResponse:
+@router.get("/api/threads", response_model=ThreadListResponse)
+async def list_threads(user_id: str = Depends(get_current_user)) -> ThreadListResponse:
     """Return all threads (with preview labels) belonging to a user."""
     thread_ids = await retrieve_thread_ids(user_id)
     # Fetch labels concurrently for speed
@@ -78,8 +80,8 @@ async def list_threads(user_id: str) -> ThreadListResponse:
 # Create thread
 # ---------------------------------------------------------------------------
 
-@router.post("/api/users/{user_id}/threads", response_model=ThreadInfo, status_code=201)
-async def create_thread(user_id: str) -> ThreadInfo:
+@router.post("/api/threads", response_model=ThreadInfo, status_code=201)
+async def create_thread(user_id: str = Depends(get_current_user)) -> ThreadInfo:
     """Create a new empty thread for the user and return its ID."""
     thread_id = str(uuid.uuid4())
     await register_thread_owner(thread_id, user_id)
@@ -91,10 +93,11 @@ async def create_thread(user_id: str) -> ThreadInfo:
 # ---------------------------------------------------------------------------
 
 @router.delete("/api/threads/{thread_id}", status_code=204)
-async def remove_thread(thread_id: str) -> None:
+async def remove_thread(thread_id: str, user_id: str = Depends(get_current_user)) -> None:
     """Delete a thread's short-term memory checkpoint.
     Long-term memory (Postgres) is NOT affected — it persists independently.
     """
+    # TODO: Verify thread belongs to user_id
     try:
         await delete_thread(thread_id)
     except Exception as exc:
@@ -106,7 +109,8 @@ async def remove_thread(thread_id: str) -> None:
 # ---------------------------------------------------------------------------
 
 @router.get("/api/threads/{thread_id}/history", response_model=ThreadHistoryResponse)
-async def thread_history(thread_id: str) -> ThreadHistoryResponse:
+async def thread_history(thread_id: str, user_id: str = Depends(get_current_user)) -> ThreadHistoryResponse:
     """Return the human-readable message history for a thread."""
+    # TODO: Verify thread belongs to user_id
     messages = await _load_conversation(thread_id)
     return ThreadHistoryResponse(thread_id=thread_id, messages=messages)

@@ -11,7 +11,6 @@ from pydantic import BaseModel, Field
 # ---------------------------------------------------------------------------
 
 class ChatRequest(BaseModel):
-    user_id: str = Field(..., description="User identifier for long-term memory scoping.")
     thread_id: str = Field(..., description="Thread (session) identifier for short-term memory.")
     message: str = Field(..., description="The user's chat message.")
     stream: bool = Field(default=True, description="If True, response is streamed as SSE.")
@@ -29,7 +28,7 @@ class ChatResponse(BaseModel):
 # ---------------------------------------------------------------------------
 
 class ThreadCreateRequest(BaseModel):
-    user_id: str = Field(..., description="The user to create the thread for.")
+    pass # Currently no fields needed since user_id comes from JWT
 
 
 class ThreadInfo(BaseModel):
@@ -52,7 +51,6 @@ class ThreadHistoryResponse(BaseModel):
 # ---------------------------------------------------------------------------
 
 class SummarizeRequest(BaseModel):
-    user_id: str
     thread_id: str
 
 
@@ -63,7 +61,6 @@ class SummarizeResponse(BaseModel):
 
 
 class CompareMemoryRequest(BaseModel):
-    user_id: str
     query: str
     k: int = Field(default=5, ge=1, le=20)
 

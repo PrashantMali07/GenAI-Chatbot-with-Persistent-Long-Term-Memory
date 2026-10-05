@@ -11,8 +11,15 @@ from unittest.mock import MagicMock, AsyncMock, patch
 from fastapi.testclient import TestClient
 
 from app.server import app
+from app.auth import get_current_user
 
 client = TestClient(app)
+
+async def mock_get_current_user():
+    return "alice"
+
+app.dependency_overrides[get_current_user] = mock_get_current_user
+
 
 
 # ---------------------------------------------------------------------------
@@ -46,7 +53,7 @@ def test_list_users(mock_fn):
 def test_list_threads(mock_chatbot, mock_retrieve):
     # Mock aget_state to return an empty snapshot
     mock_chatbot.aget_state = AsyncMock(return_value=MagicMock(values={"messages": []}))
-    resp = client.get("/api/users/alice/threads")
+    resp = client.get("/api/threads")
     assert resp.status_code == 200
     data = resp.json()
     assert data["user_id"] == "alice"
@@ -55,7 +62,7 @@ def test_list_threads(mock_chatbot, mock_retrieve):
 
 @patch("app.api.sessions.register_thread_owner", new_callable=AsyncMock)
 def test_create_thread(mock_register):
-    resp = client.post("/api/users/alice/threads")
+    resp = client.post("/api/threads")
     assert resp.status_code == 201
     data = resp.json()
     assert "thread_id" in data
@@ -92,7 +99,7 @@ def test_thread_history(mock_chatbot):
 
 @patch("app.api.memory.summarize_and_store", new_callable=AsyncMock, return_value="Alice is a developer.")
 def test_summarize(mock_fn):
-    resp = client.post("/api/memory/summarize", json={"user_id": "alice", "thread_id": "t1"})
+    resp = client.post("/api/memory/summarize", json={"thread_id": "t1"})
     assert resp.status_code == 200
     data = resp.json()
     assert data["summary"] == "Alice is a developer."
@@ -106,7 +113,7 @@ def test_summarize(mock_fn):
     "vector": {"strategy": "semantic", "results": ["Alice is a developer."], "elapsed_seconds": 0.005},
 })
 def test_compare_memory(mock_fn):
-    resp = client.post("/api/memory/compare", json={"user_id": "alice", "query": "name", "k": 3})
+    resp = client.post("/api/memory/compare", json={"query": "name", "k": 3})
     assert resp.status_code == 200
     data = resp.json()
     assert "raw" in data
@@ -126,5 +133,5 @@ def test_chat_request_missing_fields():
 
 def test_compare_memory_k_out_of_range():
     """k=0 should fail validation (ge=1)."""
-    resp = client.post("/api/memory/compare", json={"user_id": "alice", "query": "x", "k": 0})
+    resp = client.post("/api/memory/compare", json={"query": "x", "k": 0})
     assert resp.status_code == 422
