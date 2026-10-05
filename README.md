@@ -64,6 +64,7 @@ Short-Term Memory        Tools
 | Frontend | Streamlit |
 | Observability | LangSmith tracing |
 | DB driver | psycopg2-binary |
+| Package manager | uv |
 
 ---
 
@@ -115,11 +116,12 @@ app/
 │
 └── config.py               # Centralized environment/config loading
 
-db/
+app/db/
 └── schema.sql               # PostgreSQL + pgvector schema
 
-run.py                        # Root entrypoint for Streamlit
-requirements.txt
+app.py                        # Root entrypoint for Streamlit
+pyproject.toml                # Project metadata & dependencies (uv)
+uv.lock                       # Locked dependency graph
 .env.example
 ```
 
@@ -127,14 +129,12 @@ requirements.txt
 
 ## 🚀 Setup
 
-### 1. Clone & install dependencies
+### 1. Clone & install dependencies with uv
 
 ```bash
 git clone https://github.com/PrashantMali07/GenAI-Chatbot-with-Persistent-Long-Term-Memory.git
 cd GenAI-Chatbot-with-Persistent-Long-Term-Memory
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+uv sync
 ```
 
 ### 2. Set up PostgreSQL + pgvector
@@ -149,7 +149,7 @@ CREATE EXTENSION IF NOT EXISTS vector;
 ```
 Then run the schema:
 ```bash
-psql -U <your_user> -h localhost -d resume_chatbot -f db/schema.sql
+psql -U <your_user> -h localhost -d resume_chatbot -f app/db/schema.sql
 ```
 
 ### 3. Configure environment variables
@@ -164,7 +164,9 @@ Required variables include API keys for your chosen LLM provider(s), `POSTGRES_U
 ### 4. Run the app
 
 ```bash
-streamlit run run.py
+uv run streamlit run app/frontend/main.py
+# or
+uv run python app.py
 ```
 
 ---

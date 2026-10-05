@@ -17,8 +17,8 @@ SQLITE_DB_PATH = os.getenv("SQLITE_DB_PATH", "checkpoint.db")
 POSTGRES_URL = os.getenv("POSTGRES_URL")  # e.g. postgresql://user:pass@host:port/dbname
 
 # Memory
-OPENAI_EMBEDDING_MODEL = os.getenv("OPENAI_EMBEDDING_MODEL")
-OPENAI_EMBEDDING_DIM = int(os.getenv("OPENAI_EMBEDDING_DIM"))
+OPENAI_EMBEDDING_MODEL = os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small")
+OPENAI_EMBEDDING_DIM = int(os.getenv("OPENAI_EMBEDDING_DIM", "1536"))
 
 # For Langsmith Tracing
 LANGCHAIN_TRACING_V2 = os.getenv("LANGCHAIN_TRACING_V2", "false")

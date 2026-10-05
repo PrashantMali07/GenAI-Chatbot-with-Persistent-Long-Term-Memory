@@ -1,6 +1,19 @@
 .venv
 .env
 
+# Python cache & artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.ruff_cache/
+
+# Databases & local state
+*.db-shm
+*.db-wal
+/stm.db
+app/db/short-term-memory/*.db-shm
+app/db/short-term-memory/*.db-wal
+
 # Streamlit agent skills (environment-specific symlinks)
 .agents/skills/developing-with-streamlit
-/stm.db

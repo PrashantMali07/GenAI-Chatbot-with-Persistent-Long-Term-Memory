@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import List
 
+
 class BaseMemoryStore(ABC):
     @abstractmethod
     def store(self, user_id: str, thread_id: str, summary: str) -> None:
@@ -8,6 +9,10 @@ class BaseMemoryStore(ABC):
         pass
 
     @abstractmethod
-    def retrieve(self, user_id: str, thread_id: str, query: str, k: int = 5) -> List[str]:
-        """Retrieves relevant past context based on the user's current query."""
+    def retrieve(self, user_id: str, query: str, k: int = 5) -> List[str]:
+        """Retrieves relevant past context for the given user_id and query.
+        
+        Note: retrieval is scoped to user_id (not thread_id) so the agent
+        can recall facts from *all* of a user's past sessions.
+        """
         pass
