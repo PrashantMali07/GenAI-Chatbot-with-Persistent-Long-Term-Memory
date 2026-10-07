@@ -1,4 +1,6 @@
-# GenAI Chatbot with Persistent Long-Term Memory
+# GenAI Chatbot with Persistent Long-Term Memory (v3 - Async)
+
+> **Note:** This is the `v3-async` branch. In this phase, the entire backend was refactored to be **fully asynchronous**. It uses `psycopg_pool.AsyncConnectionPool` for PostgreSQL, `aiosqlite` for LangGraph check-pointing, robust retry policies with `tenacity`, rate limiting with `slowapi`, and fully asynchronous FastAPI endpoints.
 
 A conversational chatbot built with **LangGraph** that combines session-based short-term memory with persistent, cross-session long-term memory — enabling it to recall facts about a user across entirely separate conversations, not just within a single chat.
 
