@@ -1,6 +1,6 @@
 # GenAI Chatbot with Persistent Long-Term Memory (v4 - Full Stack React)
 
-> **Note:** This is the `v4-frontend` branch, which represents the final phase of this tutorial. It completely replaces the Streamlit UI with a robust, modern **React** frontend (Vite, Tailwind v4, Zustand), implements proper **JWT Authentication** (`app/auth.py`), and uses `pg_trgm` for typo-tolerant database indexing.
+> **Note:** This is the `v4-frontend` branch (currently merged into `main`). It represents the final phase of this tutorial, featuring a decoupled **FastAPI** backend and a modern **React (Vite/Tailwind)** frontend with proper **JWT Authentication**.
 
 A conversational chatbot built with **LangGraph** that combines session-based short-term memory with persistent, cross-session long-term memory — enabling it to recall facts about a user across entirely separate conversations, not just within a single chat.
 
@@ -12,44 +12,9 @@ Most chatbots forget everything the moment a session ends. This project explores
 
 - **Short-term memory** — full conversational context within a single session, backed by SQLite via LangGraph's checkpointer.
 - **Long-term memory** — durable, cross-session memory backed by PostgreSQL, populated via LLM-driven summarization and retrieved on demand by the agent itself.
-- **Two retrieval strategies, compared head-to-head** — raw recency-based storage vs. pgvector embedding-based semantic search — to evaluate tradeoffs in relevance and latency.
+- **Authentication & Security** — Fully decoupled REST API secured by JWT tokens, allowing multi-user isolation.
 
 The agent decides *for itself* when past context is needed, using a dedicated `recall_memory` tool — the same way it decides when to use a calculator or search the web.
-
----
-
-## ⚙️ Architecture
-
-```
-User ↔ Streamlit UI
-         │
-         ▼
-  LangGraph Agent (tool-calling loop)
-         │
-    ┌────┴────────────────────┐
-    │                          │
-Short-Term Memory        Tools
-(SQLite checkpointer)    ├── calculator
-    │                    ├── wikipedia
-    │                    ├── arxiv
-    │                    ├── get_url_content
-    │                    ├── get_stock_price (AlphaVantage)
-    │                    ├── google_search (Gemini-grounded)
-    │                    └── recall_memory ──┐
-    │                                        ▼
-    │                          Long-Term Memory (PostgreSQL)
-    │                          ├── Raw store (recency-based)
-    │                          └── Vector store (pgvector, semantic)
-    │                                        ▲
-    └──────────── Manual "Save" trigger ─────┘
-                  → Incremental summarization (OpenAI)
-```
-
-**Key design decisions:**
-- Long-term memory is scoped by **`user_id`**, not `thread_id` — so memory persists across *all* of a user's sessions, not just one thread.
-- Summarization is **manually triggered** (via a sidebar button) and **incremental** — each trigger only summarizes messages since the last save, using the previous summary as context, to avoid re-processing entire conversation histories repeatedly.
-- Memory retrieval is **tool-based**, not automatic — the LLM calls `recall_memory` only when it judges past context is relevant, keeping routine queries fast and cheap.
-- `thread_id` is injected into tools via LangChain's `InjectedToolArg`, so the LLM never has to know or guess session/user identifiers itself.
 
 ---
 
@@ -57,147 +22,122 @@ Short-Term Memory        Tools
 
 | Layer | Technology |
 |---|---|
-| Orchestration | LangGraph |
-| Short-term memory | SQLite (LangGraph checkpointer) |
-| Long-term memory | PostgreSQL + pgvector |
+| Frontend | React 19, Vite, Tailwind CSS v4, Zustand |
+| Backend API | FastAPI, Uvicorn, Python 3.12 |
+| Orchestration | LangGraph, LangChain |
+| Short-term memory | SQLite (`aiosqlite` checkpointer) |
+| Long-term memory | PostgreSQL + pgvector (`psycopg` async pool) |
 | Embeddings | OpenAI (`text-embedding-3-small`) |
-| LLM providers | Groq, Ollama, OpenAI (interchangeable) |
-| Search grounding | Google Gemini (`google-genai`, native Search grounding) |
-| Frontend | Streamlit |
-| Observability | LangSmith tracing |
-| DB driver | psycopg2-binary |
-| Package manager | uv |
+| Package manager | `uv` (Backend), `npm` (Frontend) |
 
 ---
 
-## ✨ Features
+## 🚀 Setup Guide
 
-- 💬 Multi-turn conversation with full short-term context
-- 🧵 Multiple chat sessions (threads) per user, switchable from the sidebar
-- 👤 Multi-user support — switch between users via dropdown, or add a new one; each user's long-term memory is fully isolated
-- 🗑️ Delete individual chat sessions (short-term only — long-term memory is preserved independently)
-- 💾 Manual "Save to Long-Term Memory" trigger with incremental summarization
-- 🔍 Dual long-term retrieval strategies, run side-by-side for comparison (raw recency vs. vector semantic search, with latency logging)
-- 🧰 Tool-using agent: calculator, Wikipedia, arXiv, URL content fetch, stock prices (AlphaVantage), Google Search (Gemini-grounded)
-- 📊 Full LangSmith tracing — token usage, cost, and latency visibility across the entire pipeline
+### 1. Clone & Install Backend Dependencies
+We use `uv` for lightning-fast Python dependency management.
+```bash
+git clone https://github.com/PrashantMali07/GenAI-Chatbot-with-Persistent-Long-Term-Memory.git
+cd GenAI-Chatbot-with-Persistent-Long-Term-Memory
+
+# Install dependencies using uv
+uv sync
+```
+
+### 2. Set up PostgreSQL + pgvector
+The backend requires a Postgres database with the `pgvector` and `pg_trgm` extensions enabled.
+
+**Option A: Using Docker (Recommended)**
+```bash
+docker compose up -d postgres
+```
+
+**Option B: Local Postgres Installation**
+Ensure Postgres is running locally on port 5432, then run:
+```bash
+psql "postgresql://postgres:password@localhost:5432/resume_chatbot" -f app/db/schema.sql
+```
+*(Make sure to adjust the connection string to match your local Postgres credentials!)*
+
+### 3. Environment Variables (`.env`)
+Copy the example environment file:
+```bash
+cp .env.example .env
+```
+Open `.env` and fill in your database credentials and API keys.
+
+### 4. Running the Application (Two Terminals Required)
+
+**Terminal 1: Start the FastAPI Backend**
+```bash
+uv run fastapi dev app/server.py
+```
+*The backend will be available at `http://localhost:8000`*
+
+**Terminal 2: Start the React Frontend**
+```bash
+cd web
+npm install
+npm run dev
+```
+*The frontend will be available at `http://localhost:5173`*
+
+---
+
+## 🤖 Configuring LLM Providers
+
+The backend (`app/backend/llm/providers.py`) supports hot-swapping between multiple AI models depending on the environment variables provided in your `.env` file.
+
+### Option 1: OpenAI (GPT-4o)
+To use OpenAI's flagship models, simply add your API key to the `.env` file:
+```env
+OPENAI_API_KEY="sk-proj-..."
+```
+*By default, the application will prioritize OpenAI if the key is present.*
+
+### Option 2: Google Gemini (Gemini 1.5 Pro)
+To use Google Gemini (which also grants the agent native Google Search grounding capabilities), add your Google API key:
+```env
+GOOGLE_API_KEY="AIzaSy..."
+```
+*(If you want to force the application to use Gemini over OpenAI, you can comment out the `OPENAI_API_KEY` in your `.env` file, or modify `get_llm()` in `providers.py` to return the Gemini client).*
+
+### Option 3: Ollama (Local Models)
+To run the chatbot completely locally and for free, you can use Ollama.
+1. Download and install [Ollama](https://ollama.com/).
+2. Pull a model (e.g., Llama 3):
+   ```bash
+   ollama run llama3
+   ```
+3. Update your `.env` file to point to your local Ollama server:
+   ```env
+   OLLAMA_BASE_URL="http://localhost:11434"
+   ```
+*(You will need to update `providers.py` to specify the exact model string you downloaded, e.g., `model="llama3"`).*
 
 ---
 
 ## 📁 Project Structure
 
+```text
+├── app/
+│   ├── api/              # FastAPI Routers (auth, chat, memory, sessions)
+│   ├── backend/
+│   │   ├── graph.py      # LangGraph orchestration & system prompt
+│   │   ├── memory/       # PostgreSQL raw/vector storage logic
+│   │   └── llm/          # Groq / Ollama / OpenAI / Gemini provider selection
+│   ├── tools/            # Agent Tools (calculator, wikipedia, etc.)
+│   ├── auth.py           # JWT Authentication & bcrypt hashing
+│   └── server.py         # FastAPI root entrypoint
+├── app/db/
+│   └── schema.sql        # PostgreSQL + pgvector schema
+├── web/                  # React Frontend (Vite)
+│   ├── src/
+│   │   ├── components/   # Sidebar, ChatInput
+│   │   ├── pages/        # Login, Chat
+│   │   └── store/        # Zustand state management
+│   └── package.json
+├── docker-compose.yml
+├── pyproject.toml
+└── .env.example
 ```
-app/
-├── frontend/
-│   ├── main.py           # Streamlit entrypoint
-│   ├── session.py        # Session/thread/user state management
-│   ├── sidebar.py         # Sidebar UI (users, threads, memory controls)
-│   └── chat_ui.py         # Chat rendering & streaming input handling
-│
-├── backend/
-│   ├── graph.py            # LangGraph orchestration & system prompt
-│   ├── checkpointer.py     # SQLite checkpointer + thread ownership tracking
-│   ├── memory/
-│   │   ├── base.py            # Shared BaseMemoryStore interface
-│   │   ├── postgres_raw.py    # Raw (recency-based) long-term store
-│   │   ├── postgres_vector.py # pgvector (semantic) long-term store
-│   │   ├── summarizer.py      # Incremental summarization logic
-│   │   ├── summary_state.py   # Tracks per-user/thread summarization progress
-│   │   ├── comparator.py      # Side-by-side retrieval comparison + timing
-│   │   └── db.py               # Postgres connection helper
-│   └── llm/
-│       └── providers.py       # Groq / Ollama / OpenAI provider selection
-│
-├── tools/
-│   ├── calculator_tool.py
-│   ├── wikipedia_tool.py
-│   ├── arxiv_tool.py
-│   ├── url_tool.py
-│   ├── stock_tool.py
-│   ├── google_search_tool.py
-│   └── memory_tool.py     # recall_memory — agent-invoked long-term recall
-│
-└── config.py               # Centralized environment/config loading
-
-app/db/
-└── schema.sql               # PostgreSQL + pgvector schema
-
-app.py                        # Root entrypoint for Streamlit
-pyproject.toml                # Project metadata & dependencies (uv)
-uv.lock                       # Locked dependency graph
-.env.example
-```
-
----
-
-## 🚀 Setup
-
-### 1. Clone & install dependencies with uv
-
-```bash
-git clone https://github.com/PrashantMali07/GenAI-Chatbot-with-Persistent-Long-Term-Memory.git
-cd GenAI-Chatbot-with-Persistent-Long-Term-Memory
-uv sync
-```
-
-### 2. Set up PostgreSQL + pgvector
-
-```bash
-sudo -u postgres psql
-```
-```sql
-CREATE DATABASE resume_chatbot;
-\c resume_chatbot
-CREATE EXTENSION IF NOT EXISTS vector;
-```
-Then run the schema:
-```bash
-psql -U <your_user> -h localhost -d resume_chatbot -f app/db/schema.sql
-```
-
-### 3. Configure environment variables
-
-Copy `.env.example` to `.env` and fill in your keys:
-```bash
-cp .env.example .env
-```
-
-Required variables include API keys for your chosen LLM provider(s), `POSTGRES_URL`, `SQLITE_DB_PATH`, and (optionally) `LANGCHAIN_API_KEY` for tracing.
-
-### 4. Run the app
-
-```bash
-uv run streamlit run app/frontend/main.py
-# or
-uv run python app.py
-```
-
----
-
-## 🧪 Testing the memory system manually
-
-Backend components can be exercised directly without the UI:
-
-```python
-from app.backend.memory.summarizer import summarize_and_store
-from app.backend.memory.comparator import compare_retrieval
-
-# Summarize and persist a thread's conversation
-summarize_and_store(user_id="default_user", thread_id="chat_1")
-
-# Compare raw vs. vector retrieval for a query
-compare_retrieval(user_id="default_user", query="What is the user's name?", k=3)
-```
-
----
-
-## 📌 Status
-
-Actively developed. 
-
-**Current focus:** migrating the backend to an async **FastAPI** service to support concurrent access and decouple the API layer from the Streamlit frontend.
-
----
-
-## 📄 License
-
-The Unlicenced
