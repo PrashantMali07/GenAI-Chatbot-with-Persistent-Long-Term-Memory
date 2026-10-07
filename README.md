@@ -40,12 +40,15 @@ We use `uv` for lightning-fast Python dependency management.
 git clone https://github.com/PrashantMali07/GenAI-Chatbot-with-Persistent-Long-Term-Memory.git
 cd GenAI-Chatbot-with-Persistent-Long-Term-Memory
 
+# Install venv using uv, Python==3.12
+uv venv --python 3.12
+
 # Install dependencies using uv
 uv sync
 ```
 
 ### 2. Set up PostgreSQL + pgvector
-The backend requires a Postgres database with the `pgvector` and `pg_trgm` extensions enabled.
+The backend requires a Postgres database with the `pgvector` and `pg_trgm` extensions enabled. If you've postgres locally installed, either stop the services first or use port other than `5432`, or `5433:5432` in `.yml` **(Recommended)**
 
 **Option A: Using Docker (Recommended)**
 ```bash
@@ -95,7 +98,7 @@ OPENAI_API_KEY="sk-proj-..."
 ```
 *By default, the application will prioritize OpenAI if the key is present.*
 
-### Option 2: Google Gemini (Gemini 1.5 Pro)
+### Option 2: Google Gemini
 To use Google Gemini (which also grants the agent native Google Search grounding capabilities), add your Google API key:
 ```env
 GOOGLE_API_KEY="AIzaSy..."
