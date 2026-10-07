@@ -1,13 +1,18 @@
 import { Mic, Send } from "lucide-react";
 import React, { useState } from "react";
 
-export function ChatInput({ onSendMessage }: { onSendMessage: (msg: string) => void }) {
+interface ChatInputProps {
+  onSendMessage: (msg: string) => void;
+  disabled?: boolean;
+}
+
+export function ChatInput({ onSendMessage, disabled }: ChatInputProps) {
   const [message, setMessage] = useState("");
   const [isRecording, setIsRecording] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (message.trim()) {
+    if (message.trim() && !disabled) {
       onSendMessage(message);
       setMessage("");
     }
@@ -35,18 +40,18 @@ export function ChatInput({ onSendMessage }: { onSendMessage: (msg: string) => v
       >
         <Mic size={20} />
       </button>
-      
+
       <input
         type="text"
         value={message}
         onChange={(e) => setMessage(e.target.value)}
-        placeholder="Type your message..."
+        placeholder={disabled ? "Waiting for reply..." : "Type your message..."}
         className="flex-1 p-3 rounded-lg border bg-input text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
       />
-      
+
       <button
         type="submit"
-        disabled={!message.trim()}
+        disabled={!message.trim() || disabled}
         className="p-3 rounded-lg bg-primary text-primary-foreground disabled:opacity-50 hover:bg-primary/90 transition-colors"
       >
         <Send size={20} />

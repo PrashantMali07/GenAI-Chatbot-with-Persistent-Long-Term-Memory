@@ -16,6 +16,7 @@ from app.auth import get_current_user
 
 from app.backend.checkpointer import (
     delete_thread,
+    get_thread_owner,
     register_thread_owner,
     retrieve_thread_ids,
 )
@@ -54,10 +55,20 @@ async def _load_conversation(thread_id: str) -> list[dict]:
 
     formatted = []
     for msg in raw_messages:
-        if isinstance(msg, HumanMessage) and msg.content:
-            formatted.append({"role": "user", "content": msg.content})
-        elif isinstance(msg, AIMessage) and msg.content:
-            formatted.append({"role": "assistant", "content": msg.content})
+        content = msg.content
+        if isinstance(content, list):
+            # Extract text from list of blocks (e.g., Claude/OpenAI tool calls)
+            content = " ".join([b.get("text", "") for b in content if isinstance(b, dict) and "text" in b])
+        elif not isinstance(content, str):
+            content = str(content)
+            
+        if not content.strip():
+            continue
+
+        if isinstance(msg, HumanMessage):
+            formatted.append({"role": "user", "content": content})
+        elif isinstance(msg, AIMessage):
+            formatted.append({"role": "assistant", "content": content})
     return formatted
 
 
@@ -89,6 +100,23 @@ async def create_thread(user_id: str = Depends(get_current_user)) -> ThreadInfo:
 
 
 # ---------------------------------------------------------------------------
+# Shared ownership check
+# ---------------------------------------------------------------------------
+
+async def _ensure_owner(thread_id: str, user_id: str) -> None:
+    """Raise 404 unless thread_id is registered to user_id.
+
+    404 (not 403) avoids leaking which thread IDs exist.
+    """
+    owner = await get_thread_owner(thread_id)
+    if owner != user_id:
+        raise HTTPException(
+            status_code=404,
+            detail="Thread not found",
+        )
+
+
+# ---------------------------------------------------------------------------
 # Delete thread
 # ---------------------------------------------------------------------------
 
@@ -97,7 +125,7 @@ async def remove_thread(thread_id: str, user_id: str = Depends(get_current_user)
     """Delete a thread's short-term memory checkpoint.
     Long-term memory (Postgres) is NOT affected — it persists independently.
     """
-    # TODO: Verify thread belongs to user_id
+    await _ensure_owner(thread_id, user_id)
     try:
         await delete_thread(thread_id)
     except Exception as exc:
@@ -111,6 +139,6 @@ async def remove_thread(thread_id: str, user_id: str = Depends(get_current_user)
 @router.get("/api/threads/{thread_id}/history", response_model=ThreadHistoryResponse)
 async def thread_history(thread_id: str, user_id: str = Depends(get_current_user)) -> ThreadHistoryResponse:
     """Return the human-readable message history for a thread."""
-    # TODO: Verify thread belongs to user_id
+    await _ensure_owner(thread_id, user_id)
     messages = await _load_conversation(thread_id)
     return ThreadHistoryResponse(thread_id=thread_id, messages=messages)

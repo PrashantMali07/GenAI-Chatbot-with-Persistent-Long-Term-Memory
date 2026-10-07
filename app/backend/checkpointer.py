@@ -35,6 +35,17 @@ async def register_thread_owner(thread_id: str, user_id: str) -> None:
         await conn.commit()
 
 
+async def get_thread_owner(thread_id: str) -> str | None:
+    """Returns the user_id that owns a thread, or None if unregistered."""
+    async with get_sqlite_connection() as conn:
+        async with conn.execute(
+            "SELECT user_id FROM thread_owners WHERE thread_id = ?",
+            (thread_id,),
+        ) as cursor:
+            row = await cursor.fetchone()
+            return row[0] if row else None
+
+
 async def retrieve_thread_ids(user_id: str) -> list[str]:
     """Returns thread_ids belonging to a specific user, ordered by most recent."""
     async with get_sqlite_connection() as conn:

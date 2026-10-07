@@ -70,15 +70,26 @@ def test_create_thread(mock_register):
     mock_register.assert_awaited_once()
 
 
+@patch("app.api.sessions.get_thread_owner", new_callable=AsyncMock, return_value="alice")
 @patch("app.api.sessions.delete_thread", new_callable=AsyncMock)
-def test_delete_thread(mock_delete):
+def test_delete_thread(mock_delete, mock_owner):
     resp = client.delete("/api/threads/t1")
     assert resp.status_code == 204
     mock_delete.assert_awaited_once_with("t1")
 
 
+@patch("app.api.sessions.get_thread_owner", new_callable=AsyncMock, return_value="mallory")
+@patch("app.api.sessions.delete_thread", new_callable=AsyncMock)
+def test_delete_thread_forbidden(mock_delete, mock_owner):
+    """A thread owned by someone else must not be deletable (404, no leak)."""
+    resp = client.delete("/api/threads/t1")
+    assert resp.status_code == 404
+    mock_delete.assert_not_awaited()
+
+
+@patch("app.api.sessions.get_thread_owner", new_callable=AsyncMock, return_value="alice")
 @patch("app.api.sessions.graph.chatbot")
-def test_thread_history(mock_chatbot):
+def test_thread_history(mock_chatbot, mock_owner):
     from langchain_core.messages import AIMessage, HumanMessage
     mock_chatbot.aget_state = AsyncMock(return_value=MagicMock(
         values={"messages": [
@@ -91,6 +102,13 @@ def test_thread_history(mock_chatbot):
     messages = resp.json()["messages"]
     assert messages[0] == {"role": "user", "content": "Hello"}
     assert messages[1] == {"role": "assistant", "content": "Hi there!"}
+
+
+@patch("app.api.sessions.get_thread_owner", new_callable=AsyncMock, return_value="mallory")
+def test_thread_history_forbidden(mock_owner):
+    """Another user's thread must not be readable (404, no leak)."""
+    resp = client.get("/api/threads/t1/history")
+    assert resp.status_code == 404
 
 
 # ---------------------------------------------------------------------------
