@@ -1,4 +1,6 @@
-# GenAI Chatbot with Persistent Long-Term Memory
+# GenAI Chatbot with Persistent Long-Term Memory (v4 - Full Stack React)
+
+> **Note:** This is the `v4-frontend` branch, which represents the final phase of this tutorial. It completely replaces the Streamlit UI with a robust, modern **React** frontend (Vite, Tailwind v4, Zustand), implements proper **JWT Authentication** (`app/auth.py`), and uses `pg_trgm` for typo-tolerant database indexing.
 
 A conversational chatbot built with **LangGraph** that combines session-based short-term memory with persistent, cross-session long-term memory — enabling it to recall facts about a user across entirely separate conversations, not just within a single chat.
 
