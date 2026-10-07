@@ -1,4 +1,6 @@
-# GenAI Chatbot with Persistent Long-Term Memory
+# GenAI Chatbot with Persistent Long-Term Memory (v2 - FastAPI)
+
+> **Note:** This is the `v2-fastapi` branch. In this phase, the application was split into a decoupled **FastAPI** backend and a thin Streamlit frontend. It also introduces Pydantic schemas, Pytest testing, and a unified `docker-compose` setup.
 
 A conversational chatbot built with **LangGraph** that combines session-based short-term memory with persistent, cross-session long-term memory — enabling it to recall facts about a user across entirely separate conversations, not just within a single chat.
 
