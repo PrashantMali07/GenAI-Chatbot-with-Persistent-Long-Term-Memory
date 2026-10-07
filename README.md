@@ -1,4 +1,6 @@
-# GenAI Chatbot with Persistent Long-Term Memory
+# GenAI Chatbot with Persistent Long-Term Memory (v1 - Streamlit)
+
+> **Note:** This is the `v1-streamlit` branch. It contains the original architecture where the Streamlit frontend and LangGraph backend are tightly coupled in the same process, using synchronous operations. For the modern asynchronous, API-driven React version, see the `v4-frontend` branch.
 
 A conversational chatbot built with **LangGraph** that combines session-based short-term memory with persistent, cross-session long-term memory — enabling it to recall facts about a user across entirely separate conversations, not just within a single chat.
 
